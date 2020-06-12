@@ -1,2 +1,3 @@
 export * from './Gallery'
-export * from './GaleryMulti'
+export * from './GalleryMulti'
+export * from './Controller'
