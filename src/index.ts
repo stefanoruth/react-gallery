@@ -1,1 +1,2 @@
-export const Gallery = () => {}
+export * from './Gallery'
+export * from './GaleryMulti'

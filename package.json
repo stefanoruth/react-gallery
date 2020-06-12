@@ -19,7 +19,7 @@
         "clean": "rm -rf dist/",
         "build": "yarn clean && rollup -c rollup.config.ts",
         "example": "cd ./example && yarn start",
-        "dev": "concurrently --kill-others \"yarn build --watch\" \"yarn example\""
+        "dev": "concurrently --kill-others -n \"Main,Example\" -c \"magenta,yellow\" \"yarn build --watch\" \"yarn example\""
     },
     "files": [
         "dist"
