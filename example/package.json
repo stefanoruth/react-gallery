@@ -1,0 +1,36 @@
+{
+    "name": "@stefanoruth/react-gallery-example",
+    "version": "0.1.0",
+    "license": "MIT",
+    "private": true,
+    "dependencies": {
+        "@stefanoruth/react-gallery": "link:..",
+        "@types/node": "^13.7.1",
+        "@types/react": "^16.9.19",
+        "@types/react-dom": "^16.9.5",
+        "autoprefixer": "^9.7.4",
+        "postcss-cli": "^7.1.0",
+        "react": "^16.12.0",
+        "react-dom": "^16.12.0",
+        "react-scripts": "^3.3.1",
+        "tailwindcss": "^1.2.0",
+        "typescript": "^3.7.5"
+    },
+    "scripts": {
+        "build:style": "tailwind build src/styles/index.css -o src/styles/tailwind.css",
+        "start": "yarn build:style && PORT=8081 react-scripts start",
+        "build": "react-scripts build"
+    },
+    "browserslist": {
+        "production": [
+            ">0.2%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
+    }
+}

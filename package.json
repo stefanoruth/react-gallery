@@ -1,0 +1,56 @@
+{
+    "name": "@stefanoruth/react-gallery",
+    "version": "1.0.27",
+    "main": "dist/index.cjs.js",
+    "module": "dist/index.esm.js",
+    "types": "dist/index.d.ts",
+    "author": "Stefano Ruth <stefano6262@gmail.com>",
+    "license": "MIT",
+    "homepage": "https://github.com/stefanoruth/react-gallery#readme",
+    "bugs": {
+        "url": "https://github.com/stefanoruth/react-gallery/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/stefanoruth/react-gallery.git"
+    },
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "clean": "rm -rf dist/",
+        "build": "yarn clean && rollup -c rollup.config.ts",
+        "example": "cd ./example && yarn start",
+        "dev": "concurrently --kill-others \"yarn build --watch\" \"yarn example\""
+    },
+    "files": [
+        "dist"
+    ],
+    "peerDependencies": {
+        "react": ">=16.0.0",
+        "react-dom": ">=16.0.0"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "@rollup/plugin-commonjs": "^13.0.0",
+        "@types/react": "^16.9.19",
+        "@types/react-dom": "^16.9.5",
+        "concurrently": "^5.1.0",
+        "react": "^16.12.0",
+        "react-dom": "^16.12.0",
+        "rollup": "^2.13.1",
+        "rollup-plugin-bundle-size": "^1.0.3",
+        "rollup-plugin-typescript2": "^0.27.1",
+        "typescript": "^3.7.5"
+    },
+    "prettier": {
+        "semi": false,
+        "useTabs": false,
+        "tabWidth": 4,
+        "singleQuote": true,
+        "trailingComma": "es5",
+        "proseWrap": "always",
+        "jsxBracketSameLine": true,
+        "bracketSpacing": true,
+        "arrowParens": "avoid",
+        "printWidth": 120
+    }
+}
