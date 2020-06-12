@@ -15,6 +15,6 @@ export default {
             format: 'es',
         },
     ],
-    external: ['react', 'react-dom', 'focus-trap'],
+    external: ['react', 'react-dom'],
     plugins: [commonjs(), typescript(), bundleSize()],
 }
