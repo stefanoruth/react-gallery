@@ -1,14 +1,44 @@
 import React from 'react'
-import { Gallery } from '@stefanoruth/react-gallery'
+import { Gallery, GalleryApi } from '@stefanoruth/react-gallery'
 import classNames from 'classnames'
 
 const images = ['/assets/image1.jpg', '/assets/image2.jpg', '/assets/image3.jpg']
 
 export const App: React.FunctionComponent = () => {
+    const gallery = React.useRef<GalleryApi>()
+    const [slideIndex, setSlideIndex] = React.useState(0)
+    const fixLint = !!gallery.current
+
+    React.useEffect(() => {
+        if (!gallery.current) {
+            return
+        }
+
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowLeft') {
+                return gallery.current?.prev()
+            }
+
+            if (e.key === 'ArrowRight') {
+                return gallery.current?.next()
+            }
+        }
+
+        document.addEventListener('keyup', handler)
+
+        return () => {
+            document.removeEventListener('keyup', handler)
+        }
+    }, [fixLint])
+
     return (
         <div className="flex justify-center items-center bg-gray-300 min-h-screen">
             <div>
-                <Gallery style={{ width: '600px', height: '450px' }}>
+                <Gallery
+                    className="bg-gray-400"
+                    style={{ width: '600px', height: '450px' }}
+                    api={api => (gallery.current = api)}
+                    onSlideChange={index => setSlideIndex(index)}>
                     {images.map((image, i) => (
                         <div
                             key={i}
@@ -28,6 +58,17 @@ export const App: React.FunctionComponent = () => {
                         </div>
                     ))}
                 </Gallery>
+                <div className="flex justify-between mt-2">
+                    <button className="p-4 bg-purple-400" onClick={() => gallery.current?.prev()}>
+                        Prev
+                    </button>
+                    <div className="p-4">
+                        <span>{slideIndex + 1}</span>/<span>{images.length}</span>
+                    </div>
+                    <button className="p-4 bg-purple-400" onClick={() => gallery.current?.next()}>
+                        Next
+                    </button>
+                </div>
             </div>
         </div>
     )

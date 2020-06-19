@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { isSameOrContains } from './helpers'
+// import { isSameOrContains } from './helpers'
 
 const useDragging = (ref: React.RefObject<HTMLElement>, onDrag: (amount: number) => void, getOffset: () => number) => {
     React.useEffect(() => {
@@ -16,9 +16,9 @@ const useDragging = (ref: React.RefObject<HTMLElement>, onDrag: (amount: number)
                 return
             }
 
-            if (!isSameOrContains(ref.current, e.target as any)) {
-                return
-            }
+            // if (!isSameOrContains(ref.current, e.target as any)) {
+            //     return
+            // }
 
             dragging = true
 
