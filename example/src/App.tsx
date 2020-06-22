@@ -24,10 +24,10 @@ export const App: React.FunctionComponent = () => {
             }
         }
 
-        document.addEventListener('keyup', handler)
+        document.addEventListener('keydown', handler)
 
         return () => {
-            document.removeEventListener('keyup', handler)
+            document.removeEventListener('keydown', handler)
         }
     }, [fixLint])
 

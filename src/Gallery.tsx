@@ -1,27 +1,9 @@
 import * as React from 'react'
-// import { GalleryError } from './GalleryError'
-// import { isSameOrContains } from './helpers'
-// import { throttle } from 'lodash'
+import { isSameOrContains } from './helpers'
 
 export interface GalleryApi {
     next: () => void
     prev: () => void
-}
-
-const setTranslateX = (ref: React.RefObject<HTMLDivElement>, value: number) => {
-    if (!ref.current) {
-        return
-    }
-
-    ref.current.style.webkitTransform = `translateX(${value}%)`
-    ref.current.style.transform = `translateX(${value}%)`
-}
-
-const setTransitionDelay = (ref: React.RefObject<HTMLDivElement>, value: number) => {
-    if (ref.current) {
-        ref.current.style.webkitTransitionDuration = `${value}ms`
-        ref.current.style.transitionDuration = `${value}ms`
-    }
 }
 
 const setLeft = (elm: HTMLElement, value: number) => {
@@ -39,14 +21,64 @@ export const Gallery: React.FunctionComponent<{
     const isAnimating = React.useRef(false)
     const animationTime = 500
 
+    const setTranslateX = (value: number) => {
+        if (trackRef.current) {
+            trackRef.current.style.webkitTransform = `translateX(${value}%)`
+            trackRef.current.style.transform = `translateX(${value}%)`
+        }
+    }
+
+    const setTransitionDelay = (value: number) => {
+        if (trackRef.current) {
+            trackRef.current.style.webkitTransitionDuration = `${value}ms`
+            trackRef.current.style.transitionDuration = `${value}ms`
+        }
+    }
+
+    const wrapPrev = () => {
+        if (!trackRef.current) {
+            return () => {}
+        }
+
+        const lastChild: HTMLElement | null = trackRef.current.children[slideCount() - 1] as any
+
+        if (!lastChild) {
+            return () => {}
+        }
+
+        setLeft(lastChild, -100)
+
+        return () => {
+            setLeft(lastChild, (slideCount() - 1) * 100)
+        }
+    }
+
+    const wrapNext = () => {
+        if (!trackRef.current) {
+            return () => {}
+        }
+
+        const firstChild: HTMLElement | null = trackRef.current.children[0] as any
+
+        if (!firstChild) {
+            return () => {}
+        }
+
+        setLeft(firstChild, slideCount() * 100)
+
+        return () => {
+            setLeft(firstChild, 0)
+        }
+    }
+
     const animateTo = (value: number) => {
         isAnimating.current = true
-        setTransitionDelay(trackRef, animationTime)
+        setTransitionDelay(animationTime)
 
-        setTranslateX(trackRef, value)
+        setTranslateX(value)
 
         setTimeout(() => {
-            setTransitionDelay(trackRef, 0)
+            setTransitionDelay(0)
         }, animationTime)
     }
 
@@ -70,75 +102,132 @@ export const Gallery: React.FunctionComponent<{
     }, [props.api])
 
     React.useEffect(() => {
-        // if (!trackRef.current) {
-        //     return
-        // }
-        // let currentX: number
-        // let initialX: number
-        // let xOffset: number = 0
-        // let dragging = false
-        // let dragProcentage = 0
-        // const sliderWidth = trackRef.current.clientWidth
-        // const slideCount = React.Children.count(props.children)
-        // const totalWidth = sliderWidth * slideCount
-        // const onDrag = (move: number) => {
-        //     dragProcentage = (move / sliderWidth) * 100
-        //     console.log({ dragProcentage })
-        //     setTranslateX(trackRef, dragProcentage + '%')
-        // }
-        // const onDragStart = (e: MouseEvent) => {
-        //     e.preventDefault()
-        //     if (!trackRef.current || !e.target) {
-        //         return
-        //     }
-        //     if (!isSameOrContains(trackRef.current, e.target as any)) {
-        //         return
-        //     }
-        //     dragging = true
-        //     initialX = e.clientX - xOffset
-        //     // console.log('start', { initialX, dragging })
-        // }
-        // const onDragEnd = (e: MouseEvent) => {
-        //     e.preventDefault()
-        //     if (!dragging) {
-        //         return
-        //     }
-        //     initialX = currentX
-        //     dragging = false
-        //     let slideTo: number
-        //     if (Math.abs(dragProcentage % 100) > 50) {
-        //         slideTo = Math.round(dragProcentage / 100) * 100
-        //     } else {
-        //         slideTo = Math.ceil(dragProcentage / 100) * 100
-        //     }
-        //     // xOffset = currentX
-        //     xOffset = (slideTo / 100) * sliderWidth
-        //     const currentSlide = Math.abs(xOffset / sliderWidth)
-        //     selected.current = currentSlide
-        //     console.log({ currentSlide, xOffset, sliderWidth })
-        //     setTranslateX(trackRef, slideTo + '%')
-        //     console.log('end', { initialX, dragging, xOffset })
-        // }
-        // const onDragMove = (e: MouseEvent) => {
-        //     e.preventDefault()
-        //     if (!dragging) {
-        //         return
-        //     }
-        //     currentX = e.clientX - initialX
-        //     // console.log('dragging', { currentX, dragging })
-        //     onDrag(currentX)
-        // }
-        // trackRef.current.addEventListener('mousedown', onDragStart)
-        // trackRef.current.addEventListener('mouseup', onDragEnd)
-        // trackRef.current.addEventListener('mousemove', onDragMove)
-        // return () => {
-        //     if (!trackRef.current) {
-        //         return
-        //     }
-        //     trackRef.current.removeEventListener('mousedown', onDragStart)
-        //     trackRef.current.removeEventListener('mouseup', onDragEnd)
-        //     trackRef.current.removeEventListener('mousemove', onDragMove)
-        // }
+        if (!trackRef.current) {
+            return
+        }
+
+        let currentX: number
+        let initialX: number
+        let xOffset: number = 0
+        let dragging = false
+        let drag = 0
+        let dragDir: 'prev' | 'next' | undefined
+        let wrapped: boolean = false
+        let finishSlide: undefined | (() => void)
+
+        const setFinish = (method: () => void) => {
+            if (finishSlide) {
+                finishSlide = () => {
+                    if (finishSlide) {
+                        finishSlide()
+                    }
+                    method()
+                }
+            } else {
+                finishSlide = method
+            }
+        }
+
+        const slideWidth = parseInt(window.getComputedStyle(trackRef.current).width, 10)
+        const totalWidth = slideWidth * slideCount()
+
+        const onDragStart = (e: MouseEvent) => {
+            const { clientX } = e
+            e.preventDefault()
+
+            if (!trackRef.current || !e.target) {
+                return
+            }
+
+            if (!isSameOrContains(trackRef.current, e.target as any)) {
+                return
+            }
+
+            xOffset =
+                (slideWidth *
+                    parseInt(trackRef.current.style.transform.replace('translateX(', '').replace('%)', ''), 10)) /
+                100
+
+            dragging = true
+            initialX = clientX - xOffset
+            console.log('start', { initialX, xOffset, clientX, slideWidth, totalWidth })
+        }
+
+        const onDragMove = (e: MouseEvent) => {
+            const { clientX } = e
+            e.preventDefault()
+
+            if (!dragging) {
+                return
+            }
+
+            currentX = clientX - initialX
+            drag = (currentX / slideWidth) * 100
+
+            if (currentX === 0) {
+                dragDir = undefined
+            } else if (currentX > 0) {
+                dragDir = 'prev'
+
+                if (selected.current === 0 && wrapped === false) {
+                    console.log('wrap prev')
+
+                    const reset = wrapPrev()
+
+                    setFinish(reset)
+
+                    wrapped = true
+                }
+            } else if (currentX < 0) {
+                dragDir = 'next'
+                if (selected.current === slideCount() - 1 && wrapped === false) {
+                    console.log('wrap next')
+
+                    wrapped = true
+                }
+            }
+
+            // console.log('move', { currentX, drag, dragDir })
+
+            setTranslateX(drag)
+        }
+
+        const onDragEnd = (e: MouseEvent) => {
+            e.preventDefault()
+
+            if (!dragging) {
+                return
+            }
+
+            dragging = false
+            wrapped = false
+            xOffset = initialX = currentX
+
+            const currentSlide = xOffset % slideWidth
+
+            // selected.current = currentSlide
+
+            if (finishSlide) {
+                finishSlide()
+                finishSlide = undefined
+            }
+
+            console.log('end', { currentX, currentSlide })
+        }
+
+        trackRef.current.addEventListener('mousedown', onDragStart)
+        trackRef.current.addEventListener('mouseup', onDragEnd)
+        trackRef.current.addEventListener('mousemove', onDragMove)
+
+        return () => {
+            if (!trackRef.current) {
+                return
+            }
+
+            trackRef.current.removeEventListener('mousedown', onDragStart)
+            trackRef.current.removeEventListener('mouseup', onDragEnd)
+            trackRef.current.removeEventListener('mousemove', onDragMove)
+        }
     }, [!!trackRef.current])
 
     const slideFlow = (callback: (elm: HTMLDivElement) => (() => void) | void) => () => {
@@ -173,21 +262,15 @@ export const Gallery: React.FunctionComponent<{
         selected.current--
 
         if (selected.current < 0) {
-            const lastChild: HTMLElement | null = elm.children[slideCount() - 1] as any
-
-            if (!lastChild) {
-                return
-            }
-
-            setLeft(lastChild, -100)
+            const reset = wrapPrev()
 
             animateTo(100)
 
             selected.current = slideCount() - 1
 
             return () => {
-                setLeft(lastChild, (slideCount() - 1) * 100)
-                setTranslateX(trackRef, selected.current * -100)
+                reset()
+                setTranslateX(selected.current * -100)
             }
         }
 
@@ -198,21 +281,15 @@ export const Gallery: React.FunctionComponent<{
         selected.current++
 
         if (selected.current === slideCount()) {
-            const firstChild: HTMLElement | null = elm.children[0] as any
-
-            if (!firstChild) {
-                return
-            }
-
-            setLeft(firstChild, slideCount() * 100)
+            const reset = wrapNext()
 
             animateTo(selected.current * -100)
 
             selected.current = 0
 
             return () => {
-                setLeft(firstChild, 0)
-                setTranslateX(trackRef, 0)
+                reset()
+                setTranslateX(0)
             }
         }
 
