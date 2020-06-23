@@ -150,7 +150,7 @@ export const Gallery: React.FunctionComponent<{
 
             dragging = true
             initialX = clientX - xOffset
-            console.log('start', { initialX, xOffset, clientX, slideWidth, totalWidth })
+            // console.log('start', { initialX, xOffset, clientX, slideWidth, totalWidth })
         }
 
         const onDragMove = (e: MouseEvent) => {
@@ -170,7 +170,7 @@ export const Gallery: React.FunctionComponent<{
                 dragDir = 'prev'
 
                 if (selected.current === 0 && wrapped === false) {
-                    console.log('wrap prev')
+                    // console.log('wrap prev')
 
                     const reset = wrapPrev()
 
@@ -181,7 +181,11 @@ export const Gallery: React.FunctionComponent<{
             } else if (currentX < 0) {
                 dragDir = 'next'
                 if (selected.current === slideCount() - 1 && wrapped === false) {
-                    console.log('wrap next')
+                    // console.log('wrap next')
+
+                    const reset = wrapNext()
+
+                    setFinish(reset)
 
                     wrapped = true
                 }
@@ -203,9 +207,28 @@ export const Gallery: React.FunctionComponent<{
             wrapped = false
             xOffset = initialX = currentX
 
-            const currentSlide = xOffset % slideWidth
+            const currentSlide = Math.round((Math.round(xOffset / 100) * 100) / slideWidth)
 
-            // selected.current = currentSlide
+            if (currentSlide > 0) {
+                console.log('prevWrap')
+                // prevWrap
+                selected.current = slideCount() - 1
+            } else if (currentSlide <= slideCount() * -1) {
+                console.log('nextWrap', slideCount() * -1)
+                // nextWrap
+                selected.current = 0
+            } else {
+                // defaul
+                selected.current = Math.abs(currentSlide)
+
+                console.log(selected.current * slideWidth * -1)
+
+                animateTo(selected.current * -100)
+            }
+
+            if (props.onSlideChange) {
+                props.onSlideChange(selected.current)
+            }
 
             if (finishSlide) {
                 finishSlide()
