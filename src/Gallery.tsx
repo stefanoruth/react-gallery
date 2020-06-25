@@ -113,20 +113,8 @@ export const Gallery: React.FunctionComponent<{
         let drag = 0
         let dragDir: 'prev' | 'next' | undefined
         let wrapped: boolean = false
-        let finishSlide: undefined | (() => void)
-
-        const setFinish = (method: () => void) => {
-            if (finishSlide) {
-                finishSlide = () => {
-                    if (finishSlide) {
-                        finishSlide()
-                    }
-                    method()
-                }
-            } else {
-                finishSlide = method
-            }
-        }
+        let finishList: (() => void)[] = []
+        let finishTimeoutId: number | undefined
 
         const slideWidth = parseInt(window.getComputedStyle(trackRef.current).width, 10)
         const totalWidth = slideWidth * slideCount()
@@ -142,6 +130,8 @@ export const Gallery: React.FunctionComponent<{
             if (!isSameOrContains(trackRef.current, e.target as any)) {
                 return
             }
+
+            clearTimeout(finishTimeoutId)
 
             xOffset =
                 (slideWidth *
@@ -174,7 +164,7 @@ export const Gallery: React.FunctionComponent<{
 
                     const reset = wrapPrev()
 
-                    setFinish(reset)
+                    finishList.push(reset)
 
                     wrapped = true
                 }
@@ -185,7 +175,7 @@ export const Gallery: React.FunctionComponent<{
 
                     const reset = wrapNext()
 
-                    setFinish(reset)
+                    finishList.push(reset)
 
                     wrapped = true
                 }
@@ -203,39 +193,60 @@ export const Gallery: React.FunctionComponent<{
                 return
             }
 
-            dragging = false
-            wrapped = false
-            xOffset = initialX = currentX
+            const currentSlide = Math.round((Math.round(currentX / 100) * 100) / slideWidth)
 
-            const currentSlide = Math.round((Math.round(xOffset / 100) * 100) / slideWidth)
+            let action: 'slide' | 'wrapNext' | 'wrapPrev'
 
             if (currentSlide > 0) {
-                console.log('prevWrap')
-                // prevWrap
-                selected.current = slideCount() - 1
+                action = 'wrapPrev'
             } else if (currentSlide <= slideCount() * -1) {
-                console.log('nextWrap', slideCount() * -1)
-                // nextWrap
-                selected.current = 0
+                action = 'wrapNext'
             } else {
-                // defaul
-                selected.current = Math.abs(currentSlide)
-
-                console.log(selected.current * slideWidth * -1)
-
-                animateTo(selected.current * -100)
+                action = 'slide'
             }
+
+            switch (action) {
+                case 'wrapPrev':
+                    animateTo(100)
+                    selected.current = slideCount() - 1
+
+                    finishList.push(() => {
+                        setTranslateX(selected.current * -100)
+                    })
+                    break
+
+                case 'wrapNext':
+                    animateTo((selected.current + 1) * -100)
+                    selected.current = 0
+
+                    finishList.push(() => {
+                        setTranslateX(0)
+                    })
+                    break
+
+                default:
+                    selected.current = Math.abs(currentSlide)
+
+                    animateTo(selected.current * -100)
+                    break
+            }
+
+            console.log('end', { currentX, currentSlide, action, wrapped })
+
+            // Clean up
 
             if (props.onSlideChange) {
                 props.onSlideChange(selected.current)
             }
 
-            if (finishSlide) {
-                finishSlide()
-                finishSlide = undefined
-            }
+            finishTimeoutId = setTimeout(() => {
+                finishList.forEach(action => action())
+                finishList = []
+            }, animationTime)
 
-            console.log('end', { currentX, currentSlide })
+            dragging = false
+            wrapped = false
+            xOffset = initialX = currentX
         }
 
         trackRef.current.addEventListener('mousedown', onDragStart)
