@@ -22,17 +22,21 @@ export const Gallery: React.FunctionComponent<{
     const animationTime = 500
 
     const setTranslateX = (value: number) => {
-        if (trackRef.current) {
-            trackRef.current.style.webkitTransform = `translateX(${value}%)`
-            trackRef.current.style.transform = `translateX(${value}%)`
+        if (!trackRef.current) {
+            throw new Error(`Missing trackRef`)
         }
+
+        trackRef.current.style.webkitTransform = `translateX(${value}%)`
+        trackRef.current.style.transform = `translateX(${value}%)`
     }
 
     const setTransitionDelay = (value: number) => {
-        if (trackRef.current) {
-            trackRef.current.style.webkitTransitionDuration = `${value}ms`
-            trackRef.current.style.transitionDuration = `${value}ms`
+        if (!trackRef.current) {
+            throw new Error(`Missing trackRef`)
         }
+
+        trackRef.current.style.webkitTransitionDuration = `${value}ms`
+        trackRef.current.style.transitionDuration = `${value}ms`
     }
 
     const wrapPrev = () => {
@@ -111,13 +115,11 @@ export const Gallery: React.FunctionComponent<{
         let xOffset: number = 0
         let dragging = false
         let drag = 0
-        let dragDir: 'prev' | 'next' | undefined
         let wrapped: boolean = false
         let finishList: (() => void)[] = []
         let finishTimeoutId: number | undefined
 
         const slideWidth = parseInt(window.getComputedStyle(trackRef.current).width, 10)
-        const totalWidth = slideWidth * slideCount()
 
         const onDragStart = (e: MouseEvent) => {
             const { clientX } = e
@@ -140,7 +142,6 @@ export const Gallery: React.FunctionComponent<{
 
             dragging = true
             initialX = clientX - xOffset
-            // console.log('start', { initialX, xOffset, clientX, slideWidth, totalWidth })
         }
 
         const onDragMove = (e: MouseEvent) => {
@@ -154,14 +155,8 @@ export const Gallery: React.FunctionComponent<{
             currentX = clientX - initialX
             drag = (currentX / slideWidth) * 100
 
-            if (currentX === 0) {
-                dragDir = undefined
-            } else if (currentX > 0) {
-                dragDir = 'prev'
-
+            if (currentX > 0) {
                 if (selected.current === 0 && wrapped === false) {
-                    // console.log('wrap prev')
-
                     const reset = wrapPrev()
 
                     finishList.push(reset)
@@ -169,10 +164,7 @@ export const Gallery: React.FunctionComponent<{
                     wrapped = true
                 }
             } else if (currentX < 0) {
-                dragDir = 'next'
                 if (selected.current === slideCount() - 1 && wrapped === false) {
-                    // console.log('wrap next')
-
                     const reset = wrapNext()
 
                     finishList.push(reset)
@@ -180,8 +172,6 @@ export const Gallery: React.FunctionComponent<{
                     wrapped = true
                 }
             }
-
-            // console.log('move', { currentX, drag, dragDir })
 
             setTranslateX(drag)
         }
@@ -195,43 +185,25 @@ export const Gallery: React.FunctionComponent<{
 
             const currentSlide = Math.round((Math.round(currentX / 100) * 100) / slideWidth)
 
-            let action: 'slide' | 'wrapNext' | 'wrapPrev'
-
             if (currentSlide > 0) {
-                action = 'wrapPrev'
+                animateTo(100)
+                selected.current = slideCount() - 1
+
+                finishList.push(() => {
+                    setTranslateX(selected.current * -100)
+                })
             } else if (currentSlide <= slideCount() * -1) {
-                action = 'wrapNext'
+                animateTo((selected.current + 1) * -100)
+                selected.current = 0
+
+                finishList.push(() => {
+                    setTranslateX(0)
+                })
             } else {
-                action = 'slide'
+                selected.current = Math.abs(currentSlide)
+
+                animateTo(selected.current * -100)
             }
-
-            switch (action) {
-                case 'wrapPrev':
-                    animateTo(100)
-                    selected.current = slideCount() - 1
-
-                    finishList.push(() => {
-                        setTranslateX(selected.current * -100)
-                    })
-                    break
-
-                case 'wrapNext':
-                    animateTo((selected.current + 1) * -100)
-                    selected.current = 0
-
-                    finishList.push(() => {
-                        setTranslateX(0)
-                    })
-                    break
-
-                default:
-                    selected.current = Math.abs(currentSlide)
-
-                    animateTo(selected.current * -100)
-                    break
-            }
-
-            console.log('end', { currentX, currentSlide, action, wrapped })
 
             // Clean up
 
@@ -240,6 +212,7 @@ export const Gallery: React.FunctionComponent<{
             }
 
             finishTimeoutId = setTimeout(() => {
+                isAnimating.current = false
                 finishList.forEach(action => action())
                 finishList = []
             }, animationTime)
@@ -249,22 +222,18 @@ export const Gallery: React.FunctionComponent<{
             xOffset = initialX = currentX
         }
 
-        trackRef.current.addEventListener('mousedown', onDragStart)
-        trackRef.current.addEventListener('mouseup', onDragEnd)
-        trackRef.current.addEventListener('mousemove', onDragMove)
+        document.addEventListener('mousedown', onDragStart)
+        document.addEventListener('mouseup', onDragEnd)
+        document.addEventListener('mousemove', onDragMove)
 
         return () => {
-            if (!trackRef.current) {
-                return
-            }
-
-            trackRef.current.removeEventListener('mousedown', onDragStart)
-            trackRef.current.removeEventListener('mouseup', onDragEnd)
-            trackRef.current.removeEventListener('mousemove', onDragMove)
+            document.removeEventListener('mousedown', onDragStart)
+            document.removeEventListener('mouseup', onDragEnd)
+            document.removeEventListener('mousemove', onDragMove)
         }
     }, [!!trackRef.current])
 
-    const slideFlow = (callback: (elm: HTMLDivElement) => (() => void) | void) => () => {
+    const slideFlow = (callback: () => (() => void) | void) => () => {
         if (!trackRef.current) {
             return
         }
@@ -275,7 +244,7 @@ export const Gallery: React.FunctionComponent<{
 
         isAnimating.current = true
 
-        const reset = callback(trackRef.current)
+        const reset = callback()
 
         if (props.onSlideChange) {
             props.onSlideChange(selected.current)
@@ -292,7 +261,7 @@ export const Gallery: React.FunctionComponent<{
         }, animationTime)
     }
 
-    const onPrev = slideFlow(elm => {
+    const onPrev = slideFlow(() => {
         selected.current--
 
         if (selected.current < 0) {
@@ -311,7 +280,7 @@ export const Gallery: React.FunctionComponent<{
         animateTo(selected.current * -100)
     })
 
-    const onNext = slideFlow(elm => {
+    const onNext = slideFlow(() => {
         selected.current++
 
         if (selected.current === slideCount()) {
