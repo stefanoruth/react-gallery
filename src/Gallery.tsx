@@ -112,14 +112,20 @@ export const Gallery: React.FunctionComponent<{
 
         let currentX: number
         let initialX: number
+        let initialClientX: number
         let xOffset: number = 0
         let dragging = false
-        let drag = 0
-        let wrapped: boolean = false
         let finishList: (() => void)[] = []
         let finishTimeoutId: number | undefined
+        let currentXOld: number
+
+        let slidePositions: number[]
 
         const slideWidth = parseInt(window.getComputedStyle(trackRef.current).width, 10)
+
+        const moveSlideToBack = () => {}
+
+        const moveSlideToFront = () => {}
 
         const onDragStart = (e: MouseEvent) => {
             const { clientX } = e
@@ -140,8 +146,15 @@ export const Gallery: React.FunctionComponent<{
                     parseInt(trackRef.current.style.transform.replace('translateX(', '').replace('%)', ''), 10)) /
                 100
 
+            slidePositions = Array.from(trackRef.current.children).map(child =>
+                parseInt((child as HTMLElement).style.left, 10)
+            )
+
+            console.log({ slidePositions })
+
             dragging = true
             initialX = clientX - xOffset
+            initialClientX = clientX
         }
 
         const onDragMove = (e: MouseEvent) => {
@@ -152,26 +165,33 @@ export const Gallery: React.FunctionComponent<{
                 return
             }
 
+            if (!trackRef.current) {
+                return
+            }
+
             currentX = clientX - initialX
-            drag = (currentX / slideWidth) * 100
+            const drag = (currentX / slideWidth) * 100
 
-            if (currentX > 0) {
-                if (selected.current === 0 && wrapped === false) {
-                    const reset = wrapPrev()
+            const dir = clientX >= initialClientX ? 'prev' : 'next'
+            const currentSlide = Math.round((Math.round(currentX / 100) * 100) / slideWidth)
 
-                    finishList.push(reset)
+            if (dir === 'next') {
+                const nextSlidePos = Math.floor(drag / 100) * 100 * -1
 
-                    wrapped = true
-                }
-            } else if (currentX < 0) {
-                if (selected.current === slideCount() - 1 && wrapped === false) {
-                    const reset = wrapNext()
+                if (!slidePositions.includes(nextSlidePos)) {
+                    const lastSlide = Math.min(...slidePositions)
 
-                    finishList.push(reset)
+                    const slideToMove = trackRef.current.children[slidePositions.indexOf(lastSlide)] as HTMLElement
 
-                    wrapped = true
+                    setLeft(slideToMove, nextSlidePos)
+
+                    console.log({ lastSlide, nextSlidePos, slideToMove })
                 }
             }
+
+            // const upComingSlide = currentX >= 0 ? currentSlide + 1 : currentSlide - 1
+
+            console.log({ currentSlide, currentX, drag, dir, slidePositions })
 
             setTranslateX(drag)
         }
@@ -185,25 +205,9 @@ export const Gallery: React.FunctionComponent<{
 
             const currentSlide = Math.round((Math.round(currentX / 100) * 100) / slideWidth)
 
-            if (currentSlide > 0) {
-                animateTo(100)
-                selected.current = slideCount() - 1
+            selected.current = Math.abs(currentSlide)
 
-                finishList.push(() => {
-                    setTranslateX(selected.current * -100)
-                })
-            } else if (currentSlide <= slideCount() * -1) {
-                animateTo((selected.current + 1) * -100)
-                selected.current = 0
-
-                finishList.push(() => {
-                    setTranslateX(0)
-                })
-            } else {
-                selected.current = Math.abs(currentSlide)
-
-                animateTo(selected.current * -100)
-            }
+            animateTo(selected.current * -100)
 
             // Clean up
 
@@ -218,7 +222,6 @@ export const Gallery: React.FunctionComponent<{
             }, animationTime)
 
             dragging = false
-            wrapped = false
             xOffset = initialX = currentX
         }
 
